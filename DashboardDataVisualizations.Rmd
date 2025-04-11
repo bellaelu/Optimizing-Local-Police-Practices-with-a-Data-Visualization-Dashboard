@@ -1,0 +1,1078 @@
+---
+title: "Hayden Feedback Data Visualizations"
+author: "Bella Lu"
+date: "2024-12-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+setwd("C:/Users/fpq5wq/Desktop/RStudioData")
+
+library(ggplot2) 
+library(tidyverse)
+library(colorspace)
+library(dplyr)
+library(stringr) 
+library(tidyr)
+library(lubridate) #used for dates (month/year)
+library(patchwork) #used to place two graphs together
+library(gridExtra)
+library(ggalluvial)
+library(RColorBrewer) 
+library(plotly)
+library(viridis)
+library(knitr)
+library(shiny)
+
+policeData <- read.csv("CommunityPolicingData.csv", stringsAsFactors = FALSE)
+UVAData <- read.csv("UVAPolicingData.csv")
+```
+
+
+```{r}
+color_mapping <- c("CALLS FOR SERVICE" = "#D53E4F", 
+                   "CHECK POINT" = "#FC8D59", 
+                   "EQUIPMENT VIOLATION" = "#FEE08B", 
+                   "OTHER INVESTIGATIVE DETENTION" = "#FFFFBF", 
+                   "TERRY STOP" = "#E6F598", 
+                   "TRAFFIC VIOLATION" = "#99D594",
+                   "ACCIDENT" = "#5E4FA2", 
+                   "WARRANT SERVICE" = "#3288BD")
+```
+
+
+CHARLOTTESVILLE 
+Dates grouped by Stop Reason: 
+```{r}
+policeData2 <- policeData[policeData$REASON.FOR.STOP != "", ]
+policeData2$STOP.DATE <- mdy(policeData2$STOP.DATE)
+head(policeData2)
+policeData2$REASON.FOR.STOP <- as.factor(policeData2$REASON.FOR.STOP)
+
+class(policeData2$STOP.DATE)
+head(policeData2$STOP.DATE)
+
+
+policeData2 <- policeData2 %>% 
+                mutate(year_month = floor_date(STOP.DATE, "month"))
+
+policeData2 <- policeData2 %>% 
+                filter(!is.na(REASON.FOR.STOP))
+        
+
+month_count <- policeData2 %>% 
+                group_by(year_month, REASON.FOR.STOP) %>% 
+                summarize(num = n()) %>% 
+                drop_na()
+
+date_plot <- ggplot(month_count, aes(x = year_month, y = num, fill =  REASON.FOR.STOP)) + 
+              geom_bar(stat = "identity", position = "stack") + 
+              labs(title = "CPD: Number of Entries per Month", x = "Month", y = "Number of Entries", fill = "REASON FOR STOP") +
+              scale_fill_manual(values = color_mapping) +
+              theme_minimal()
+              
+date_plot
+```
+
+
+CHARLOTTESVILLE
+Type of Action by Race
+```{r}
+policeData3 <- policeData %>%
+               mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+              filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")
+
+action_race_count <- policeData3 %>% 
+                      group_by(RACE) %>% 
+                      mutate(totalAct = n()) %>% 
+                      group_by(ACTION.TAKEN, RACE) %>% 
+                      summarize(numActionRace = n(), totalAct = first(totalAct), .groups = 'drop') %>% 
+                      mutate(proportionAction = numActionRace/totalAct) %>%
+                      drop_na()
+
+action_by_race <- ggplot(action_race_count, aes(x = ACTION.TAKEN, y = numActionRace, fill = as.factor(RACE))) + 
+                  geom_bar(stat = "identity") +
+                  geom_text(aes(label = scales::percent(proportionAction, accuracy = 0.1)), vjust = -0.5, position = position_stack(vjust = 0.5)) + 
+                  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+                  labs(title = "CPD: Types of Action Taken by each Race", 
+                       x = "Action Taken", 
+                       y = "Number of Entries", 
+                       fill = "Race") + 
+                  facet_grid(~RACE)
+  
+  
+action_by_race
+```
+
+UVA
+Dates grouped by Stop Reason: 
+```{r}
+UVAData2 <- UVAData[UVAData$REASON.FOR.STOP != "", ]
+UVAData2$STOP_DATE <- mdy(UVAData2$STOP_DATE)
+UVAData2$REASON.FOR.STOP <- as.factor(UVAData2$REASON.FOR.STOP)
+
+
+UVAData2 <- UVAData2 %>% 
+                mutate(year_month2 = floor_date(STOP_DATE, "month"))
+
+UVAData2 <- UVAData2 %>% 
+                filter(!is.na(REASON.FOR.STOP))
+        
+
+month_count2 <- UVAData2 %>% 
+                group_by(year_month2, REASON.FOR.STOP) %>% 
+                summarize(num = n()) %>% 
+                drop_na()
+
+
+date_plot2 <- ggplot(month_count2, aes(x = year_month2, y = num, fill =  REASON.FOR.STOP)) + 
+              geom_bar(stat = "identity", position = "stack") + 
+              labs(title = "UVAPD: Number of Entries per Month", x = "Month", y = "Number of Entries", fill = "REASON FOR STOP") + 
+              scale_fill_manual(values = color_mapping) + 
+              theme_minimal()
+              
+date_plot2
+```
+
+
+```{r}
+UVAData3 <- UVAData %>%
+               mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+              filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")
+
+action_race_count <- UVAData3 %>% 
+                      group_by(RACE) %>% 
+                      mutate(totalAct = n()) %>% 
+                      group_by(ACTION.TAKEN, RACE) %>% 
+                      summarize(numActionRace = n(), totalAct = first(totalAct), .groups = 'drop') %>% 
+                      mutate(proportionAction = numActionRace/totalAct) %>% 
+                      drop_na()
+
+action_by_race <- ggplot(action_race_count, aes(x = ACTION.TAKEN, y = numActionRace, fill = as.factor(RACE))) + 
+                  geom_bar(stat = "identity") +
+                  geom_text(aes(label = scales::percent(proportionAction, accuracy = 0.1)), vjust = -0.5, position = position_stack(vjust = 0.5)) + 
+                  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+                  labs(title = "UVAPD: Types of Action Taken by each Race", 
+                       x = "Action Taken", 
+                       y = "Number of Entries", 
+                       fill = "Race") + 
+                  facet_grid(~RACE)
+action_by_race
+```
+
+CPD: SE (n * 1/√n) 
+```{r}
+#(n * 1/√n) 
+
+policeData4 <- policeData %>%
+               mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+              filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")
+policeData4
+
+action_race_count3 <- policeData4 %>% 
+                        group_by(RACE) %>% 
+                        mutate(totalAction = n()) %>% 
+                        group_by(ACTION.TAKEN, RACE) %>% 
+                        summarize(
+                          numActionRace3 = n(), 
+                          totalAction = first(totalAction), 
+                          proportionAction = numActionRace3/totalAction, 
+                          formula = numActionRace3 * (1/sqrt(numActionRace3)),
+                          ymin = numActionRace3 - (formula), 
+                          ymax = numActionRace3 + (formula)
+                        ) %>% 
+                        drop_na()
+
+action_race_count3
+
+action_by_race_EB3 <- ggplot(action_race_count3, aes(x = ACTION.TAKEN, y = numActionRace3, fill = as.factor(RACE))) + 
+                        geom_bar(stat = "identity") + 
+                        geom_errorbar(aes(ymin = numActionRace3 - (formula), 
+                          ymax = numActionRace3 + (formula)), width = 0.2, position = position_dodge(0.9)) + 
+                        geom_text(aes(label = scales::percent(proportionAction, accuracy = 0.1)), vjust = -0.5, position = position_stack(vjust = 0.5)) +
+                        theme_minimal() + 
+                        theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+                        labs(title = "CPD: Types of Action Taken by each Race (With Error Bars)", x = "Action Taken", y = "Number of Entries", fill = "Race") + 
+                        facet_grid(~RACE)
+    
+action_by_race_EB3
+
+```
+
+UVAPD: physics SE (n * 1/√n) 
+```{r}
+UVAData4 <- UVAData %>%
+               mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+              filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")
+
+action_race_count4 <- UVAData4 %>% 
+                        group_by(RACE) %>% 
+                        mutate(totalAction = n()) %>% 
+                        group_by(ACTION.TAKEN, RACE) %>% 
+                        summarize(
+                          numActionRace4 = n(), 
+                          totalAction = first(totalAction), 
+                          proportionAction = numActionRace4/totalAction, 
+                          formula = numActionRace4 * (1/sqrt(numActionRace4)),
+                          ymin = numActionRace4 - (formula), 
+                          ymax = numActionRace4 + (formula)
+                        ) %>% 
+                        drop_na()
+
+action_race_count4
+
+action_by_race_EB4 <- ggplot(action_race_count4, aes(x = ACTION.TAKEN, y = numActionRace4, fill = as.factor(RACE))) + 
+                        geom_bar(stat = "identity") + 
+                        geom_errorbar(aes(ymin = numActionRace4 - (formula), 
+                          ymax = numActionRace4 + (formula)), width = 0.2, position = position_dodge(0.9)) + 
+                        geom_text(aes(label = scales::percent(proportionAction, accuracy = 0.1)), vjust = -0.5, position = position_stack(vjust = 0.5)) +
+                        theme_minimal() + 
+                        theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+                        labs(title = "UVAPD: Types of Action Taken by each Race (With Error Bars)", x = "Action Taken", y = "Number of Entries", fill = "Race") + 
+                        facet_grid(~RACE)
+    
+action_by_race_EB4
+
+#legend taking up too much space - can be incorporated in body of image
+#information of legend is duplicated - use color 
+#redundancy must be natural 
+#labels for columns - long and horizontal: TRY PIE CHART 
+#dump unknown
+#scaling is different, percentage is misleading - two pie charts side by side 
+#label underneath each pie with white or african american 
+#size of circle shows you n - area visually represents size (LABEL number of entries) 
+#Use acronym to save space but ensure to put in figure caption and in paper - fix title 
+#number of entries title - fix, missing opportunity to keep audience focused on people & police 
+```
+```{r}
+
+UVAData4 <- UVAData %>%
+  mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+  filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")
+
+action_race_count4 <- UVAData4 %>% 
+  group_by(RACE) %>% 
+  mutate(totalAction = n()) %>% 
+  group_by(ACTION.TAKEN, RACE) %>% 
+  summarize(
+    numActionRace4 = n(), 
+    totalAction = first(totalAction), 
+    proportionAction = numActionRace4 / totalAction, 
+    formula = numActionRace4 * (1 / sqrt(numActionRace4)),
+    ymin = numActionRace4 - formula, 
+    ymax = numActionRace4 + formula,
+    .groups = "drop"
+  ) %>% 
+  drop_na() %>%
+  filter(ACTION.TAKEN != "UNKNOWN")
+
+bar_colors <- c("WHITE" = "#00BCF4", "BLACK OR AFRICAN AMERICAN" = "#F8766D")
+
+action_by_race_EB4 <- ggplot(action_race_count4, aes(x = ACTION.TAKEN, y = numActionRace4, fill = as.factor(RACE))) + 
+  geom_bar(stat = "identity", position = "dodge") + 
+  geom_errorbar(aes(ymin = numActionRace4 - formula, ymax = numActionRace4 + formula), width = 0.2, position = position_dodge(0.9)) + 
+  geom_text(aes(label = scales::percent(proportionAction, accuracy = 0.1)), vjust = -0.5, position = position_dodge(0.9)) +
+  scale_fill_manual(values = bar_colors) + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        legend.position = "none") +
+  labs(title = "CPD: Types of Action Taken by Race", x = "Action Taken", y = "Number of Entries") + 
+  facet_wrap(~RACE, 
+             labeller = labeller(RACE = c("WHITE" = "White", "BLACK OR AFRICAN AMERICAN" = "Black or African American"))) + 
+  theme(
+    strip.text.x = element_text(face = "bold", size = 12),
+    strip.background = element_rect(fill = "white", color = "white")
+  ) +
+  # Add colors to facet labels manually
+  theme(
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    strip.text.x = element_text(size = 12, face = "bold"),
+    strip.background = element_rect(fill = "transparent", color = "white")
+  ) +
+  facet_wrap(~RACE, 
+             labeller = labeller(RACE = c("WHITE" = "White", "BLACK OR AFRICAN AMERICAN" = "Black or African American")))
+
+action_by_race_EB4
+
+
+```
+
+
+
+```{r}
+#Charlottesville Census Data, ONE RACE ALONE 
+
+ogCensus <- read.csv("DECENNIALPL2020.P1-Data.csv")
+
+colTitles <- c("WHITE", "BLACK OR AFRICAN AMERICAN", "AMERICAN INDIAN OR ALASKA NATIVE", "ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER", "UNKNOWN")
+values <- c(30344, 7122, 164, 4083 + 22, 1235)
+
+newCensus <- data.frame(RACE = colTitles, Values = values)
+
+newCensus <- newCensus %>% 
+              mutate(Proportion = values / sum(newCensus$Values))
+newCensus
+
+
+race_plotCensus <- ggplot(newCensus, aes(x = colTitles, y = values, fill = as.factor(colTitles))) + 
+              geom_bar(stat = "identity") + 
+              geom_text(aes(label = paste0(round(Proportion * 100, 1), "%")), vjust = -0.5, size = 3) + 
+              labs(title = "Number of Entries on each Race (Cville Census)", x = "Race", y = "Number of Entries") + 
+              theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+              scale_x_discrete(labels = c("ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" = "PACIFIC ISLANDER", "AMERICAN INDIAN OR ALASKA NATIVE" = "AMERICAN INDIAN/ALASKA"))
+              
+race_plotCensus
+```
+
+
+```{r}
+#IF YOU INCLUDE EVERYONE ELSE IN UNKNOWN (MIXED RACE) 
+totalPopInCville <- 46553 
+other <- totalPopInCville - sum(newCensus$Values)
+other
+
+
+colTitles2 <- c("WHITE", "BLACK OR AFRICAN AMERICAN", "AMERICAN INDIAN OR ALASKA NATIVE", "ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER", "UNKNOWN")
+values2 <- c(30344, 7122, 164, 4083 + 22, 1235 + 3583)
+
+newCensusWMixed <- data.frame(RACE = colTitles2, Values = values2)
+
+newCensusWMixed <- newCensusWMixed %>% 
+              mutate(Proportion2 = values2 / sum(newCensusWMixed$Values))
+newCensusWMixed
+
+
+race_plotCensusWMixed <- ggplot(newCensusWMixed, aes(x = colTitles2, y = values2, fill = as.factor(colTitles2))) + 
+              geom_bar(stat = "identity") + 
+              geom_text(aes(label = paste0(round(Proportion2 * 100, 1), "%")), vjust = -0.5, size = 3) + 
+              labs(title = "Number of Entries on each Race (Cville Census)", x = "Race", y = "Number of Entries") + 
+              theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+              scale_x_discrete(labels = c("ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" = "PACIFIC ISLANDER", "AMERICAN INDIAN OR ALASKA NATIVE" = "AMERICAN INDIAN/ALASKA"))
+              
+race_plotCensusWMixed
+```
+
+
+Community Policing Data
+Overlay Plots
+```{r}
+policeData <- read.csv("CommunityPolicingData.csv")
+race_count <- policeData %>% 
+              group_by(RACE) %>% 
+              filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN") %>%
+              summarize(numRace = n()) %>% 
+              drop_na()
+newCensus <- newCensus %>% 
+              mutate(Proportion = values / sum(newCensus$Values)) %>% 
+              filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")  
+
+newCensus <- newCensus %>% 
+              select(-Proportion) 
+
+newCensus$Type <- c("Census Data", "Census Data")
+race_count <- race_count %>% 
+                rename("Values" = "numRace")
+race_count$Type <- c("Community Policing Data", "Community Policing Data")
+
+newCensus 
+race_count
+
+combined <- rbind(newCensus, race_count)
+combined <- combined %>% 
+              group_by(Type) %>% 
+              mutate(Proportion = Values / sum(Values)) %>% 
+              ungroup()
+
+combined
+
+overlay_plots <- ggplot(combined, aes(x = RACE, y = Values, fill = Type)) + 
+                  geom_bar(stat = "identity", alpha = 0.75) + 
+                  geom_text(aes(label = paste0(round(Proportion * 100, 1), "%")),
+                              position = position_stack(vjust = 0.5), color = "white", size = 4) + 
+                  labs(title = "Overlay of Charlottesville Population Counts", x = "Race", y = "Number of Entries") + 
+                  scale_fill_manual(values = c("Census Data" = "blue", "Community Policing Data" = "red"))
+  
+overlay_plots
+```
+
+
+--------------------------------------------------------------------------------
+
+New Visualizations
+```{r}
+uvapd <- read.csv("UVAPolicingData.csv")
+cvillepd <- read.csv("CommunityPolicingData.csv") 
+head(cvillepd)
+```
+
+```{r}
+cvilledata <- cvillepd[cvillepd$REASON.FOR.STOP != "", ]
+cvilledata$STOP.DATE <- mdy(cvilledata$STOP.DATE)
+cvilledata$REASON.FOR.STOP <- as.factor(cvilledata$REASON.FOR.STOP)
+
+cvilledata <- cvilledata %>% 
+                mutate(year_month = floor_date(STOP.DATE, "month"))
+cvilledata <- cvilledata %>% 
+                filter(!is.na(REASON.FOR.STOP))
+
+month_count <- cvilledata %>% 
+                group_by(year_month, REASON.FOR.STOP) %>% 
+                summarise(num = n()) %>% 
+                drop_na() 
+
+color_mapping <- viridis(n = 7, option = "F") 
+
+
+date_plot <- ggplot(month_count, aes(x = year_month, y = num, fill = REASON.FOR.STOP)) + 
+             geom_bar(stat = "identity", position = "stack") + 
+             labs(title = "Number of Entries per Month", 
+                  x = "Month", 
+                  y = "Number of Traffic and Investigatory Stops", 
+                  fill = "Reason for Stop") + 
+             scale_fill_manual(values = color_mapping) + 
+             scale_x_date(date_labels = "%b %Y", date_breaks = "3 months") + 
+             theme_minimal() +
+             theme(axis.text.x = element_text(angle = 45, hjust = 1),
+                   legend.position = "bottom",
+                   plot.title = element_text(size = 14, face = "bold"),
+                   axis.text = element_text(size = 10),
+                   legend.title = element_text(size = 12),
+                   legend.text = element_text(size = 10))
+
+date_plot
+
+
+```
+```{r}
+color_mapping <- viridis(n = 7, option = "F")
+
+month_count$year_month <- as.character(month_count$year_month)
+
+month_count <- month_count %>%
+  mutate(REASON.FOR.STOP = gsub(" ", "\n", REASON.FOR.STOP))
+
+month_count$REASON.FOR.STOP <- gsub(" ", "\n", month_count$REASON.FOR.STOP) # Add line breaks to remaining labels
+
+# Updated Plotly animated bar chart
+plotly_animated <- plot_ly(
+  data = month_count,
+  x = ~REASON.FOR.STOP,
+  y = ~num,
+  color = ~REASON.FOR.STOP,
+  frame = ~year_month, 
+  type = 'bar',
+  colors = color_mapping
+) %>%
+  layout(
+    title = list(text = "Number of Entries per Month", font = list(size = 16)),
+    xaxis = list(
+      title = list(text = "Reason for Stop", standoff = 40), 
+      tickangle = -45,
+      automargin = TRUE 
+    ),
+    yaxis = list(title = "Number of Traffic/Investigatory Stops"),
+    margin = list(b = 120), 
+    showlegend = FALSE 
+  ) %>%
+  animation_opts(
+    frame = 1000, 
+    easing = "linear",
+    redraw = FALSE
+  ) %>%
+  animation_slider(
+    currentvalue = list(prefix = "Month: ") 
+  )
+
+plotly_animated
+```
+
+
+```{r}
+data <- cvillepd
+data <- data[!is.na(data$ACTION.TAKEN) & data$ACTION.TAKEN != "", ]
+data$RACE <- ifelse(data$RACE %in% c("AMERICAN INDIAN OR ALASKA NATIVE", "UNKNOWN"), 
+                    "OTHER", 
+                    data$RACE)
+
+
+data$RACE <- factor(data$RACE, levels = c("WHITE", "BLACK OR AFRICAN AMERICAN", 
+                                          "ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER", "OTHER"))
+
+violin_plot <- ggplot(data, aes(x = ACTION.TAKEN, y = AGE, color = ACTION.TAKEN, fill = ACTION.TAKEN)) + 
+               geom_violin(alpha = 0.4, scale = "area", trim = FALSE) + 
+               facet_wrap(~ RACE, scales = "free_x") +
+               scale_color_manual(values = c("WARNING ISSUED" = "#648FFF",
+                                             "CITATION/SUMMONS" = "#785EF0",
+                                             "ARREST" = "#DC267F", 
+                                             "NO ENFORCEMENT ACTION" = "#FE6100"
+                                             )) + 
+               scale_fill_manual(values = c("WARNING ISSUED" = "#648FFF",
+                                            "CITATION/SUMMONS" = "#785EF0",
+                                            "ARREST" = "#DC267F", 
+                                            "NO ENFORCEMENT ACTION" = "#FE6100")) + 
+               labs(
+                   title = "Age and Enforcement Action Distribution by Race",
+                   x = NULL,
+                   y = "Age",
+                   color = "Action Taken", 
+                   fill = "Action Taken"
+               ) +
+               theme_minimal(base_size = 6) + 
+               theme(
+                   axis.text.x = element_text(angle = 45, hjust = 1),
+                   legend.position = "top",
+                   legend.box = "horizontal", 
+                   strip.text = element_text(size = 7, face = "bold"),
+                   plot.title = element_text(size = 12, face = "bold", hjust = 0.5)
+               ) + 
+              guides(
+                   color = "none",
+                   fill = guide_legend(override.aes = list(color = NA))
+               )
+violin_plot
+```
+
+```{r}
+cvillepd2 <- cvillepd
+violation_freq <- table(cvillepd2$SPECIFIC.VIOLATION)
+violation_freq <- sort(violation_freq, decreasing = TRUE)
+violation_freq_df <- as.data.frame(violation_freq)
+colnames(violation_freq_df) <- c("Violation", "Frequency")
+print(violation_freq_df)
+```
+
+
+```{r, warning = FALSE}
+#46.2-875 = Maximum speed limit on certain other highways in cities and towns
+#46.2-874 = Maximum speed limit in business and residence districts
+#46.2-646 = Expiration and renewal of registration
+#46.2-300 = Driving without license prohibited; penalties
+#46.2-830 = Uniform traffic control devices on highways 
+#46.2-816 = Folowing too closely 
+
+
+sankey_data <- cvillepd
+#head(cvillepd)
+
+violation_codes <- data.frame(
+  SPECIFIC.VIOLATION = c("46.2-875", "46.2-874", "46.2-646", "46.2-300", "46.2-830"),
+  VIOLATION_DESCRIPTION = c(
+    "Max Speed Highways",
+    "Max Speed Bus/Res",
+    "Experation",
+    "No License",
+    "Control Devices"
+  ), 
+  VIOLATION_LEGEND = c(
+    "Maximum Speed Limit on Highways in Cities and Towns",
+    "Maximum Speed Limit in Business/Residence Districts",
+    "Expiration and Renewal of Registration",
+    "Driving without License Prohibited; Penalties",
+    "Uniform Traffic Control Devices on Highways"
+  )
+)
+sankey_data <- sankey_data %>%
+  left_join(violation_codes, by = "SPECIFIC.VIOLATION")
+
+sankey_data <- sankey_data %>%
+  filter(!is.na(VIOLATION_DESCRIPTION) & PERSON.SEARCHED != "")
+
+top_violations <- sankey_data %>%
+  count(VIOLATION_DESCRIPTION, sort = TRUE) %>%
+  top_n(5, n) %>%
+  pull(VIOLATION_DESCRIPTION)
+
+filtered_data <- sankey_data %>%
+  filter(VIOLATION_DESCRIPTION %in% top_violations)
+
+sankey_plot <- ggplot(sankey_data,
+       aes(axis1 = VIOLATION_DESCRIPTION, axis2 = VEHICLE.SEARCHED, 
+           axis3 = PERSON.SEARCHED)) +
+  geom_alluvium(aes(fill = PERSON.SEARCHED), width = 1/12) +
+  geom_stratum(width = 1/12, fill = "white", color = "black") +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 3) +
+  scale_x_discrete(limits = c("Specific Violation", "Vehicle Searched", 
+                              "Person Searched"), 
+                   expand = c(0.1, 0.1)) +
+  scale_fill_manual(
+    values = c("NO" = "#93C572", "YES" = "#D22B2B"), 
+    guide = guide_legend(title = "Person Searched")
+  ) +
+  theme_minimal() +
+  ggtitle("Traffic Stop Outcomes") +
+  labs(y = "Count", x = NULL, fill = "Person Searched") + 
+  theme(
+    axis.text.x = element_text(size = 10, face = "bold"),
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9)
+  )
+
+sankey_plot 
+```
+
+
+```{r}
+violation_table <- violation_codes %>%
+  select(VIOLATION_DESCRIPTION, VIOLATION_LEGEND, SPECIFIC.VIOLATION)
+
+kable(violation_table, caption = "Violation Table with Descriptions, Legends, and Codes")
+```
+
+
+2 Layered Pie Chart
+```{r, warning = FALSE}
+piechart_data <- cvillepd
+
+newLevels_data <- piechart_data %>%
+  mutate(
+    GENDER = case_when(
+      GENDER %in% c("OTHER", "UNKNOWN", "") ~ "OTHER/UNKNOWN",
+      TRUE ~ GENDER
+    )
+  )
+
+df_summary <- newLevels_data %>%
+  count(GENDER, REASON.FOR.STOP) %>%
+  ungroup()
+
+gender_summary <- df_summary %>%
+  group_by(GENDER) %>%
+  summarize(count = sum(n)) %>%
+  mutate(REASON.FOR.STOP = GENDER)
+
+plot_data <- bind_rows(
+  df_summary %>% mutate(layer = "Outer"),
+  gender_summary %>% mutate(layer = "Inner")
+)
+
+plot_data$GENDER <- factor(plot_data$GENDER, levels = c("FEMALE", "MALE", "OTHER/UNKNOWN"))
+
+
+ggplot(data = plot_data) + 
+  geom_bar(
+    aes(x = factor(1), y = n, fill = GENDER, alpha = REASON.FOR.STOP), 
+    stat = "identity", width = 4, just = 0, color = "white"
+  ) +
+  geom_bar(
+    aes(x = factor(1), y = count, fill = GENDER), 
+    stat = "identity", width = 3, just = 0, color = "white"
+  ) +
+  coord_polar("y", start = 0) +
+  scale_fill_brewer(palette = "Pastel1") + 
+  labs(title = "Gender and Reason for Stop", fill = "Gender") +
+  theme_void() +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+heatmap <- cvillepd
+
+heatmap <- heatmap[!is.na(heatmap$ACTION.TAKEN) & heatmap$ACTION.TAKEN != "", ]
+heatmap$RACE <- ifelse(heatmap$RACE %in% c("AMERICAN INDIAN OR ALASKA NATIVE", "UNKNOWN"), 
+                    "OTHER", 
+                    heatmap$RACE)
+
+
+heatmap$RACE <- factor(heatmap$RACE, levels = c("WHITE", "BLACK OR AFRICAN AMERICAN", 
+                                          "ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER", "OTHER"))
+
+heatmap_data <- heatmap %>%
+  count(RACE, REASON.FOR.STOP) %>%
+  ungroup()
+
+
+all_combinations <- expand.grid(
+  RACE = unique(heatmap_data$RACE),
+  REASON.FOR.STOP = unique(heatmap_data$REASON.FOR.STOP)
+)
+
+heatmap_data_full <- merge(all_combinations, heatmap_data, by = c("RACE", "REASON.FOR.STOP"), all.x = TRUE)
+heatmap_data_full[is.na(heatmap_data_full$n), "n"] <- 0  
+
+max_count <- max(heatmap_data_full$n)
+breaks <- seq(0, max_count, by = 500) 
+labels <- as.character(breaks)  
+
+heatmap_plot <- ggplot(heatmap_data_full, aes(x = RACE, y = REASON.FOR.STOP, fill = n)) +
+  geom_tile(color = "white") +
+  scale_fill_gradientn(
+    colors = c("#FFFA74", "#FF8C00", "#FF4500", "darkblue"),  
+    values = scales::rescale(c(0, 5, 10, max_count)),  
+    name = "Count", 
+    limits = c(0, max_count), 
+    breaks = breaks, 
+    labels = labels  
+  ) +
+  scale_x_discrete(labels = c(
+    "WHITE" = "White",
+    "ASIAN OR NATIVE HAWAIIAN OR OTHER PACIFIC ISLANDER" = "Asian/Native Hawaiian",
+    "BLACK OR AFRICAN AMERICAN" = "Black",
+    "UNKNOWN" = "Unknown",
+    "OTHER" = "Other"
+  )) +
+  labs(
+    title = "Heatmap: Cross-tabulation of Race and Reason for Stop",
+    x = "Race",
+    y = "Reason for Stop"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),  
+    axis.ticks = element_blank(), 
+    legend.key.height = unit(1, "cm"),  
+    legend.key.width = unit(0.5, "cm")
+  ) +
+
+  scale_y_discrete(labels = function(x) {
+    if (length(x) > 10) { 
+      return(x[seq(1, length(x), by = 2)]) 
+    } else {
+      return(x) 
+    }
+  }) 
+
+heatmap_plot
+
+```
+
+```{r}
+jurisdictions_rename <- data.frame(
+  JURISDICTION = c("CHARLOTTESVILLE", "ALBEMARLE CO", "103", "002", "2"),
+  RENAMED_JURISDICTION = c(
+    "CHARLOTTESVILLE",
+    "ABLEMARLE COUNTY",
+    "CHARLOTTESVILLE",
+    "ABLEMARLE COUNTY",
+    "ABLEMARLE COUNTY"
+  )
+)
+
+head(cvillepd)
+```
+
+
+```{r}
+#103 = Charlottesville 
+#002 = Albemarle County
+#2 = Albemarle County
+#Albemarle Co = Albemarle County
+
+summary_data <- cvillepd %>%
+  left_join(jurisdictions_rename, by = "JURISDICTION") %>%
+  group_by(RENAMED_JURISDICTION, REASON.FOR.STOP) %>%
+  summarise(Average_Age = mean(AGE, na.rm = TRUE)) %>%
+  arrange(desc(Average_Age))
+
+ggplot(summary_data, aes(x = REASON.FOR.STOP, y = Average_Age, color = RENAMED_JURISDICTION)) +
+  geom_segment(aes(xend = REASON.FOR.STOP, yend = 0), color = "gray", size = 1) +  
+  geom_point(size = 4, shape = 16) + 
+  coord_flip() +  
+  labs(title = "Average Age by Jurisdiction and Reason for Stop", 
+       x = "Reason for Stop", 
+       y = "Average Age", 
+       color = "Jurisdiction") +
+  theme_minimal(base_size = 15) + 
+  theme(
+    legend.position = "bottom",  
+    legend.title = element_text(size = 12),  
+    legend.text = element_text(size = 10), 
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 11), 
+    axis.text.y = element_text(size = 8), 
+    plot.title = element_text(size = 12, face = "bold"), 
+    panel.grid.major = element_line(color = "gray90", size = 0.5),  
+    panel.grid.minor = element_blank(), 
+    plot.margin = margin(10, 10, 10, 10)  
+  ) +
+  scale_color_brewer(palette = "Set2")
+
+
+```
+
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+UVAData4 <- UVAData4 %>%
+  mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+  filter(RACE == "WHITE" | RACE == "BLACK OR AFRICAN AMERICAN")
+
+action_race_count4 <- UVAData4 %>% 
+  group_by(RACE) %>% 
+  mutate(totalAction = n()) %>% 
+  group_by(ACTION.TAKEN, RACE) %>% 
+  summarize(
+    numActionRace4 = n(),  
+    totalAction = first(totalAction),  
+    proportionAction = numActionRace4 / totalAction, 
+    .groups = "drop"
+  ) %>% 
+  drop_na() %>%
+  filter(ACTION.TAKEN != "UNKNOWN")
+
+pie_colors <- c("NO ENFORCEMENT ACTION" = "#F3FF82", "CITATION/SUMMONS" = "#17B79C", "ARREST" = "#007C92", "WARNING ISSUED" = "#1F4260")
+
+action_by_race_pie <- ggplot(action_race_count4, aes(x = "", y = numActionRace4, fill = ACTION.TAKEN, size = numActionRace4)) +
+  geom_bar(stat = "identity", width = 1, position = "fill") +  
+  coord_polar(theta = "y") + 
+  facet_wrap(~RACE) + 
+  scale_fill_manual(values = pie_colors) +  
+  theme_void() +  
+  labs(title = "Distribution of Actions Taken by Race") +
+  theme(
+    strip.text.x = element_text(face = "bold", size = 12),
+    legend.position = "right",
+    legend.title = element_blank()
+  ) +
+  theme(
+    strip.text = element_text(face = "bold", size = 12, color = "black"),
+    strip.background = element_rect(fill = "transparent", color = "white")
+  )
+
+action_by_race_pie
+
+
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(scatterpie)
+
+UVAData4 <- UVAData4 %>%
+  mutate(ACTION.TAKEN = if_else(ACTION.TAKEN == "" | is.na(ACTION.TAKEN), "UNKNOWN", ACTION.TAKEN)) %>% 
+  filter(RACE %in% c("WHITE", "BLACK OR AFRICAN AMERICAN"))
+
+UVAData4 <- UVAData4 %>%
+  mutate(RACE = factor(RACE, levels = c("WHITE", "BLACK OR AFRICAN AMERICAN")))
+
+action_race_count4 <- UVAData4 %>% 
+  group_by(RACE) %>% 
+  mutate(totalAction = n()) %>%  
+  group_by(ACTION.TAKEN, RACE) %>% 
+  summarize(
+    numActionRace4 = n(),  
+    totalAction = first(totalAction), 
+    proportionAction = numActionRace4 / totalAction, 
+    label = paste0(round((numActionRace4 / totalAction) * 100, 1), "%"), 
+    .groups = "drop"
+  ) %>% 
+  drop_na() %>%
+  filter(ACTION.TAKEN != "UNKNOWN") %>%
+  pivot_wider(names_from = ACTION.TAKEN, values_from = proportionAction, values_fill = 0)
+
+pie_colors <- c("NO ENFORCEMENT ACTION" = "#F3FF82", "CITATION/SUMMONS" = "#17B79C", 
+                "ARREST" = "#007C92", "WARNING ISSUED" = "#1F4260")
+
+action_race_count4 <- action_race_count4 %>%
+  mutate(scale_size = sqrt(totalAction) / sqrt(max(totalAction)))  
+
+positions <- data.frame(RACE = c("WHITE", "BLACK OR AFRICAN AMERICAN"), x = c(-0.5, 0.5), y = c(0, 0))
+
+action_race_count4 <- merge(action_race_count4, positions, by = "RACE")
+
+label_positions <- action_race_count4 %>%
+  pivot_longer(cols = c("NO ENFORCEMENT ACTION", "CITATION/SUMMONS", "ARREST", "WARNING ISSUED"),
+               names_to = "ACTION.TAKEN", values_to = "proportion") %>%
+  filter(proportion > 0) %>% 
+  arrange(RACE, ACTION.TAKEN) %>%
+  group_by(RACE) %>%
+  mutate(
+  cumulative = cumsum(proportion),
+  midpoint = cumulative - proportion / 2,
+  angle = midpoint * 2 * pi,
+  x_label = x + scale_size * 1.1 * sin(angle),
+  y_label = y + scale_size * 1.1 * cos(angle)
+)
+
+ggplot() +
+  geom_scatterpie(aes(x = x, y = y, r = scale_size), data = action_race_count4, 
+                  cols = c("NO ENFORCEMENT ACTION", "CITATION/SUMMONS", "ARREST", "WARNING ISSUED"), 
+                  color = NA, alpha = 0.8) +
+  geom_text(data = label_positions, aes(x = x_label, y = y_label, label = label), 
+            size = 4, fontface = "bold", color = "black") +  
+  coord_fixed() +
+  facet_wrap(~RACE) + 
+  scale_fill_manual(values = pie_colors) +
+  theme_void() +
+  labs(title = "Distribution of Actions Taken by Race") +
+  theme(
+    legend.position = "bottom",  
+    legend.title = element_blank(),
+    plot.title = element_text(face = "bold", size = 14)
+  ) + 
+  theme (
+    strip.text = element_text(face = "bold", size = 12, color = "black")
+  )
+
+```
+
+
+
+lollipop chart, age by residency 
+
+```{r}
+pastelColors <- c(
+  "CALLS FOR SERVICE" = "#F9A602", 
+  "OTHER INVESTIGATIVE DETENTION" = "#1E9C91", 
+  "EQUIPMENT VIOLATION" = "#F04E23", 
+  "TRAFFIC VIOLATION" = "#214E6B", 
+  "TERRY STOP" = "#4C80A3", 
+  "WARRANT SERVICE" = "#FBFAA2", 
+  "ACCIDENT" = "#F17B4A"
+) 
+
+summary_data <- cvillepd %>%
+  filter(!is.na(RESIDENCY) & RESIDENCY != "") %>%
+  group_by(RESIDENCY, REASON.FOR.STOP) %>%
+  summarise(Average_Age = mean(AGE, na.rm = TRUE)) %>%
+  arrange(desc(Average_Age))
+
+ggplot(summary_data, aes(x = RESIDENCY, y = Average_Age, color = REASON.FOR.STOP)) +
+  geom_segment(aes(xend = RESIDENCY, yend = 0), color = "gray", size = 1) +  
+  geom_point(size = 4, shape = 16) + 
+  coord_flip() +  
+  scale_fill_manual(values = pastelColors) +
+  labs(title = "Average Age by Residency Type and Reason for Stop", 
+       x = "Reason for Stop", 
+       y = "Average Age", 
+       color = "Stop Reason") +
+  theme_minimal(base_size = 15) + 
+  theme(
+    legend.position = "bottom",  
+    legend.title = element_text(size = 12),  
+    legend.text = element_text(size = 10), 
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 11), 
+    axis.text.y = element_text(size = 8), 
+    plot.title = element_text(size = 12, face = "bold"), 
+    panel.grid.major = element_line(color = "gray90", size = 0.5),  
+    panel.grid.minor = element_blank(), 
+    plot.margin = margin(10, 10, 10, 10)  
+  )
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
