@@ -2,13 +2,13 @@
 
 ## Executive Summary
 
-  This is a GitHub page for all the code related to the SIEDS project titled Optimizing Local Police Practices with a Data Visualization Dashboard. Within it, you can find all the code written not only for the paper, but also for the two dashboard prototypes.
+  This is a GitHub page for all the code related to the SIEDS project titled _Optimizing Local Police Practices with a Data Visualization Dashboard_. Within it, you can find all the code written not only for the paper, but also for the two dashboard prototypes.
   
-List of code documents in this GitHub page: 
-  - Power BI File: First Dashboard using R script UI
-  - Power BI File: Second Dashboard using Power BI UI
-  - RMD File: R code of Dashboard 
-  - RMD File: R code of Visualizations for Paper
+## Repository Contents
+  - **Power BI File:** First Dashboard using R script UI
+  - **Power BI File:** Second Dashboard using Power BI UI
+  - **RMD File:** R code of Dashboard 
+  - **RMD File:** R code of Visualizations for Paper
   
 ## Abstract
 
