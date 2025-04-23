@@ -1,6 +1,6 @@
 # Optimizing Local Police Practices with a Data Visualization Dashboard
 
-##Executive Summary 
+## Executive Summary
 
   This is a GitHub page for all the code related to the SIEDS project titled Optimizing Local Police Practices with a Data Visualization Dashboard. Within it, you can find all the code written not only for the paper, but also for the two dashboard prototypes.
   
@@ -10,7 +10,7 @@ List of code documents in this GitHub page:
   - RMD File: R code of Dashboard 
   - RMD File: R code of Visualizations for Paper
   
-##Abstract
+## Abstract
 
   In Charlottesville, various criminal justice agencies collaborate to form the Evidence-Based Decision Making (EBDM) team. One facet of this organization is the Charlottesville Police Department, which seeks to optimize its processes to ensure efficiency and accountability. This paper explores the implementation and features of a dashboard designed to evaluate the CPD’s internal practices with a particular focus on identifying disparities amongst demographics. This dashboard aims to improve decision-making, enhance resource allocation, and secure effective policing strategies by providing key performance metrics. The process began with developing relationships with local crime analysts to gain insights into the datasets and align expectations with the broader mission of the police force. The initiative then required data collection, cleaning, and integration among multiple organizations to perform jurisdictional comparisons. Using Power BI as the primary data visualization tool, data modeling techniques were implemented to create meaningful relationships between data points, enabling comprehensive and holistic analysis. To track success, the dashboard monitors user engagement and how often particular visualizations are accessed. Additionally, client interviews provide qualitative feedback on their utility, and evaluation metrics will be assessed and presented. It is evident that through this analysis, innovative tools such as this data dashboard can advance the field of criminal justice by positively impacting public safety and police development. 
 
